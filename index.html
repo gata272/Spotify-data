@@ -235,11 +235,41 @@
       .empty-note { color: var(--muted); font-size: 13px; padding: 18px 0 8px; text-align: center; }
       .more-row { text-align: center; padding-top: 12px; }
 
-      .chart-wrap { overflow: hidden; }
-      .chart-wrap svg { width: 100%; height: auto; display: block; }
+      .chart-wrap { overflow: hidden; position: relative; }
+      .chart-wrap svg { width: 100%; height: auto; display: block; touch-action: manipulation; }
       .chart-wrap .bar-rect { fill: var(--accent); }
       .chart-wrap text { fill: var(--muted); font-size: 10px; font-family: inherit; }
       .chart-wrap .val { fill: var(--ink-2); font-weight: 700; }
+      /* ---------- chart tap / click values (mobile-friendly) ---------- */
+      :root { --chart-selected: #e8590c; }
+      @media (prefers-color-scheme: dark) { :root { --chart-selected: #ffa94d; } }
+      .chart-wrap .bar-rect.is-selected {
+        fill: var(--chart-selected);
+        stroke: var(--ink); stroke-width: 1.5;
+      }
+      .chart-wrap .hit-rect { fill: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+      .chart-wrap .hit-rect:focus { outline: none; stroke: var(--ink); stroke-width: 1; stroke-dasharray: 3 3; }
+      .chart-tooltip {
+        position: absolute; z-index: 6; pointer-events: none;
+        background: var(--ink); color: var(--bg);
+        font-size: 13px; font-weight: 900; line-height: 1.35;
+        padding: 6px 10px; border-radius: 8px; white-space: nowrap;
+        transform: translate(-50%, -100%);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+      }
+      .chart-tooltip .tt-sub { display: block; font-size: 11px; font-weight: 700; opacity: 0.85; }
+      .chart-readout {
+        margin-top: 10px; min-height: 48px;
+        display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+        background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+        padding: 10px 12px; font-size: 14px; line-height: 1.5;
+      }
+      .chart-readout .ro-label { font-weight: 900; color: var(--ink); }
+      .chart-readout .ro-value { font-weight: 900; font-size: 17px; color: var(--accent-strong); }
+      .chart-readout .ro-sub { color: var(--ink-2); font-size: 13px; }
+      .chart-readout .ro-hint { color: var(--muted); font-size: 12.5px; }
+      .chart-readout.is-active { border-color: var(--accent); background: var(--accent-soft); }
+      .chart-note { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
 
       /* ---------- daily list ---------- */
       .panel.collapsed .artist-head { margin-bottom: 0; }
@@ -304,7 +334,7 @@
   <body>
     <div class="wrap">
       <h1>Spotify再生履歴ランキング</h1>
-      <p class="lede">Spotifyからダウンロードした「拡張ストリーミング履歴」のzipファイルを読み込むと、期間を指定してアーティスト・曲ごとの再生回数と再生時間のランキングが見られます。月ごと・日ごと・時間帯ごとの統計も見られます。アーティストで絞れば、そのアーティスト専用のハイライト・月ごと・日ごと・時間帯ごとの統計も見られます。各セクション（アーティストのセクションも含む）は見出し右のボタンで折りたためます。新しいzipを入手したら、そのつど読み込み直してください。</p>
+      <p class="lede">Spotifyからダウンロードした「拡張ストリーミング履歴」のzipファイルを読み込むと、期間を指定してアーティスト・曲ごとの再生回数と再生時間のランキングが見られます。月ごと・日ごと・時間帯ごとの統計も見られます。アーティストで絞れば、そのアーティスト専用のハイライト・月ごと・日ごと・時間帯ごとの統計も見られます。グラフはタップ（スマホ）／クリック・ホバー（パソコン）で、その月・その日・その時間帯の実数値が見られます。各セクション（アーティストのセクションも含む）は見出し右のボタンで折りたためます。新しいzipを入手したら、そのつど読み込み直してください。</p>
 
       <!-- ===== upload ===== -->
       <section id="uploadSection">
@@ -1084,18 +1114,30 @@
         plays.forEach(function (v, h) {
           var bh = Math.max(2, (v / max) * (base - topPad));
           var x = h * bw + bw * 0.18, wdt = bw * 0.64;
-          svg += '<rect class="bar-rect" x="' + x.toFixed(1) + '" y="' + (base - bh).toFixed(1) +
+          svg += '<rect class="bar-rect" data-idx="' + h + '" x="' + x.toFixed(1) + '" y="' + (base - bh).toFixed(1) +
                  '" width="' + wdt.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="3"><title>' +
                  h + "時台：" + fmtNum(v) + "回</title></rect>";
           if (h % 3 === 0) {
             svg += '<text x="' + (h * bw + bw / 2).toFixed(1) + '" y="' + (base + 16) + '" text-anchor="middle">' + h + "時</text>";
           }
         });
+        svg += '<line x1="0" y1="' + base + '" x2="' + W + '" y2="' + base + '" stroke="var(--border)" stroke-width="1"/>';
+        // Wide invisible tap targets covering each full slot (easy to tap on phones)
+        plays.forEach(function (v, h) {
+          var label = h + "時台";
+          svg += '<rect class="hit-rect" data-idx="' + h + '" tabindex="0" role="button" aria-label="' +
+                 esc(label + "：" + fmtNum(v) + "回") + '" data-ro-label="' + esc(label) +
+                 '" data-ro-value="' + esc(fmtNum(v) + " 回") + '" data-ro-sub=""' +
+                 ' x="' + (h * bw).toFixed(1) + '" y="0" width="' + bw.toFixed(1) + '" height="' + base + '"><title>' +
+                 esc(label + "：" + fmtNum(v) + "回") + "</title></rect>";
+        });
+        svg += "</svg>";
         var peak = 0;
         plays.forEach(function (v, h) { if (v > plays[peak]) peak = h; });
-        svg += '<line x1="0" y1="' + base + '" x2="' + W + '" y2="' + base + '" stroke="var(--border)" stroke-width="1"/></svg>';
-        svg += '<p style="margin:8px 0 0;font-size:12px;color:var(--muted)">ピークは ' + peak + "時台（" +
-               esc(fmtNum(plays[peak])) + "回）／ バーにカーソルを合わせると各時間帯の回数が表示されます</p>";
+        svg += '<div class="chart-tooltip" data-tooltip hidden></div>';
+        svg += '<div class="chart-readout" data-readout aria-live="polite"><span class="ro-hint">グラフをタップ（クリック）すると、その時間帯の再生回数がここに大きく表示されます。</span></div>';
+        svg += '<p class="chart-note">ピークは ' + peak + "時台（" +
+               esc(fmtNum(plays[peak])) + "回）</p>";
         wrap.innerHTML = svg;
       }
 
@@ -1143,7 +1185,7 @@
           var h = r.ms > 0 ? Math.max(2, (r.ms / max) * (base - topPad)) : 0;
           var x = i * bw + inset;
           if (r.ms > 0) {
-            svg += '<rect class="bar-rect" x="' + x.toFixed(1) + '" y="' + (base - h).toFixed(1) +
+            svg += '<rect class="bar-rect" data-idx="' + i + '" x="' + x.toFixed(1) + '" y="' + (base - h).toFixed(1) +
                    '" width="' + barW.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2"><title>' +
                    esc(fmtDate(r.date)) + "：" + esc(fmtDur(r.ms)) + " ／ " + fmtNum(r.plays) + "回</title></rect>";
           }
@@ -1156,15 +1198,31 @@
                    '" text-anchor="middle">' + esc(fmtDur(r.ms)) + "</text>";
           }
         });
-        svg += '<line x1="0" y1="' + base + '" x2="' + W + '" y2="' + base + '" stroke="var(--border)" stroke-width="1"/></svg>';
+        svg += '<line x1="0" y1="' + base + '" x2="' + W + '" y2="' + base + '" stroke="var(--border)" stroke-width="1"/>';
+        // Contiguous tap targets: any tap on the plot selects the nearest day,
+        // even when bars are hair-thin over a long period.
+        var dayFocusable = filled.length <= 62 ? ' tabindex="0"' : "";
+        filled.forEach(function (r, i) {
+          var label = fmtDate(r.date) + "（" + WD[r.date.getDay()] + "）";
+          var val = r.ms > 0 ? fmtDur(r.ms) : "0秒";
+          var sub = fmtNum(r.plays) + " 回";
+          svg += '<rect class="hit-rect" data-idx="' + i + '"' + dayFocusable + ' role="button" aria-label="' +
+                 esc(label + "：" + val + " ／ " + sub) + '" data-ro-label="' + esc(label) +
+                 '" data-ro-value="' + esc(val) + '" data-ro-sub="' + esc(sub) + '"' +
+                 ' x="' + (i * bw).toFixed(1) + '" y="0" width="' + Math.max(1, bw).toFixed(1) + '" height="' + base + '"><title>' +
+                 esc(label + "：" + val + " ／ " + sub) + "</title></rect>";
+        });
+        svg += "</svg>";
         var best = rows[0];
         rows.forEach(function (r) { if (r.ms > best.ms) best = r; });
         var totalMs = 0; rows.forEach(function (r) { totalMs += r.ms; });
         var avg = filled.length ? totalMs / filled.length : 0;
+        svg += '<div class="chart-tooltip" data-tooltip hidden></div>';
+        svg += '<div class="chart-readout" data-readout aria-live="polite"><span class="ro-hint">グラフをタップ（クリック）すると、その日の再生時間と再生回数がここに大きく表示されます。</span></div>';
         svg += '<p class="day-note">最も多かった日：' + esc(fmtDate(best.date)) + "（" + esc(fmtDur(best.ms)) +
                " ／ " + fmtNum(best.plays) + '回）／ 1日平均 ' + esc(fmtDur(avg)) +
                " ／ 聴いた日 " + fmtNum(rows.length) + "日（期間 " + fmtNum(filled.length) + "日中）" +
-               (filled.length > 31 ? " ／ グラフは全日分を表示しています" : "") + "</p>";
+               (filled.length > 31 ? " ／ グラフは全日分を表示しています（タップした位置に一番近い日が選ばれます）" : "") + "</p>";
         wrap.innerHTML = svg;
       }
 
@@ -1219,7 +1277,7 @@
           var v = byMonth[k];
           var h = Math.max(2, (v / max) * (base - topPad));
           var x = i * bw + bw * 0.18, w = bw * 0.64;
-          svg += '<rect class="bar-rect" x="' + x.toFixed(1) + '" y="' + (base - h).toFixed(1) +
+          svg += '<rect class="bar-rect" data-idx="' + i + '" x="' + x.toFixed(1) + '" y="' + (base - h).toFixed(1) +
                  '" width="' + w.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="3"><title>' +
                  esc(k) + "：" + esc(fmtDur(v)) + "</title></rect>";
           if (keys.length <= 24 || i % Math.ceil(keys.length / 24) === 0) {
@@ -1231,10 +1289,23 @@
                    '" text-anchor="middle">' + esc(fmtDur(v)) + "</text>";
           }
         });
-        svg += '<line x1="0" y1="' + base + '" x2="' + W + '" y2="' + base + '" stroke="var(--border)" stroke-width="1"/></svg>';
-        svg += '<p style="margin:8px 0 0;font-size:12px;color:var(--muted)">最も多かった月：' +
+        svg += '<line x1="0" y1="' + base + '" x2="' + W + '" y2="' + base + '" stroke="var(--border)" stroke-width="1"/>';
+        keys.forEach(function (k, i) {
+          var v = byMonth[k];
+          var parts = k.split("-");
+          var label = parts[0] + "年" + parseInt(parts[1], 10) + "月";
+          svg += '<rect class="hit-rect" data-idx="' + i + '" tabindex="0" role="button" aria-label="' +
+                 esc(label + "：" + fmtDur(v)) + '" data-ro-label="' + esc(label) +
+                 '" data-ro-value="' + esc(fmtDur(v)) + '" data-ro-sub=""' +
+                 ' x="' + (i * bw).toFixed(1) + '" y="0" width="' + bw.toFixed(1) + '" height="' + base + '"><title>' +
+                 esc(label + "：" + fmtDur(v)) + "</title></rect>";
+        });
+        svg += "</svg>";
+        svg += '<div class="chart-tooltip" data-tooltip hidden></div>';
+        svg += '<div class="chart-readout" data-readout aria-live="polite"><span class="ro-hint">グラフをタップ（クリック）すると、その月の再生時間がここに大きく表示されます。</span></div>';
+        svg += '<p class="chart-note">最も多かった月：' +
                esc(keys.reduce(function (a, b) { return byMonth[a] >= byMonth[b] ? a : b; })) +
-               "（" + esc(fmtDur(max)) + "）／ バーにカーソルを合わせると各月の時間が表示されます</p>";
+               "（" + esc(fmtDur(max)) + "）</p>";
         wrap.innerHTML = svg;
       }
 
@@ -1251,6 +1322,64 @@
         renderDaily(list);
         renderHourChart(list, $("hourChartWrap"));
       }
+
+      /* ================= chart tap / click values ================= */
+      // Works on touch (tap) and mouse (click / hover): shows the exact value
+      // in a large readout under the chart, highlights the bar, and pops a
+      // tooltip over the bar. Hover <title> alone never fires reliably on phones.
+      function showChartHit(hit) {
+        var wrap = hit.closest ? hit.closest(".chart-wrap") : null;
+        if (!wrap) return;
+        var idx = hit.getAttribute("data-idx");
+        var label = hit.getAttribute("data-ro-label") || "";
+        var value = hit.getAttribute("data-ro-value") || "";
+        var sub = hit.getAttribute("data-ro-sub") || "";
+        var readout = wrap.querySelector("[data-readout]");
+        if (readout) {
+          readout.innerHTML =
+            '<span class="ro-label">' + esc(label) + '</span>' +
+            '<span class="ro-value num">' + esc(value) + "</span>" +
+            (sub ? '<span class="ro-sub num">' + esc(sub) + "</span>" : "");
+          readout.classList.add("is-active");
+        }
+        var bars = wrap.querySelectorAll(".bar-rect.is-selected");
+        bars.forEach(function (b) { b.classList.remove("is-selected"); });
+        var bar = idx !== null ? wrap.querySelector('.bar-rect[data-idx="' + idx + '"]') : null;
+        if (bar) bar.classList.add("is-selected");
+        var tooltip = wrap.querySelector("[data-tooltip]");
+        if (tooltip) {
+          tooltip.innerHTML = esc(value) +
+            '<span class="tt-sub">' + esc(label) + (sub ? " ／ " + esc(sub) : "") + "</span>";
+          try {
+            var wrapRect = wrap.getBoundingClientRect();
+            var anchor = bar || hit;
+            var r = anchor.getBoundingClientRect();
+            var cx = r.left + r.width / 2 - wrapRect.left;
+            cx = Math.max(58, Math.min(wrapRect.width - 58, cx));
+            tooltip.style.left = cx + "px";
+            tooltip.style.top = Math.max(20, r.top - wrapRect.top - 6) + "px";
+          } catch (err) { /* positioning is decorative; readout below still shows the value */ }
+          tooltip.hidden = false;
+        }
+        wrap._lastChartIdx = idx;
+      }
+      document.addEventListener("click", function (e) {
+        var hit = e.target && e.target.closest ? e.target.closest(".hit-rect") : null;
+        if (hit) showChartHit(hit);
+      });
+      document.addEventListener("pointerover", function (e) {
+        if (e.pointerType && e.pointerType !== "mouse") return;
+        var hit = e.target && e.target.closest ? e.target.closest(".hit-rect") : null;
+        if (!hit) return;
+        var wrap = hit.closest(".chart-wrap");
+        if (wrap && wrap._lastChartIdx === hit.getAttribute("data-idx")) return;
+        showChartHit(hit);
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        var hit = e.target && e.target.closest ? e.target.closest(".hit-rect") : null;
+        if (hit) { e.preventDefault(); showChartHit(hit); }
+      });
 
       /* ================= collapsible sections ================= */
       function setPanelCollapsed(panel, collapsed) {
