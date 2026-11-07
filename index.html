@@ -135,6 +135,45 @@
       }
       .panel h2 { font-size: 15px; font-weight: 900; margin: 0 0 12px; }
 
+      /* ---------- collapsible panels ---------- */
+      .panel-head {
+        display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+      }
+      .panel-head h2 { margin: 0; flex: 1; min-width: 0; }
+      .panel.collapsed .panel-head { margin-bottom: 0; }
+      .panel.collapsed .panel-body { display: none; }
+      .collapse-btn {
+        appearance: none; cursor: pointer; flex: none;
+        display: inline-flex; align-items: center; gap: 6px;
+        font: inherit; font-size: 12px; font-weight: 700; color: var(--ink-2);
+        background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
+        padding: 6px 12px; min-height: 32px;
+      }
+      .collapse-btn:hover { border-color: var(--muted); }
+      .collapse-btn .chev { display: inline-block; transition: transform 0.15s; font-size: 11px; }
+      .collapsed .collapse-btn .chev { transform: rotate(-90deg); }
+      .fold-bar {
+        display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center;
+        margin-bottom: 12px; font-size: 12px; color: var(--muted); font-weight: 700;
+      }
+      .fold-bar button {
+        appearance: none; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700;
+        color: var(--ink-2); background: var(--surface); border: 1px solid var(--border);
+        border-radius: 999px; padding: 5px 12px; min-height: 30px;
+      }
+      .fold-bar button:hover { border-color: var(--muted); }
+
+      /* ---------- artist sub-sections ---------- */
+      .artist-section {
+        border-top: 1px solid var(--border); margin-top: 18px; padding-top: 14px;
+      }
+      .artist-section-head {
+        display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+      }
+      .artist-section-head h3 { font-size: 14px; font-weight: 900; margin: 0; flex: 1; min-width: 0; }
+      .artist-section.collapsed .artist-section-head { margin-bottom: 0; }
+      .artist-section.collapsed .artist-section-body { display: none; }
+
       .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
       .chip {
         appearance: none; cursor: pointer; font: inherit; font-size: 13px; font-weight: 500;
@@ -230,7 +269,7 @@
         background: var(--surface-2); border-radius: 10px; padding: 12px 14px;
       }
       .insight .k { font-size: 12px; color: var(--muted); font-weight: 700; margin-bottom: 2px; }
-      .insight .v { font-size: 18px; font-weight: 900; line-height: 1.35; }
+      .insight .v { font-size: 18px; font-weight: 900; line-height: 1.35; overflow-wrap: anywhere; }
       .insight .v small { font-size: 12px; font-weight: 700; color: var(--ink-2); }
       .insight .sub { font-size: 12px; color: var(--ink-2); }
       .insight .sub:empty { display: none; }
@@ -249,7 +288,7 @@
   <body>
     <div class="wrap">
       <h1>Spotify再生履歴ランキング</h1>
-      <p class="lede">Spotifyからダウンロードした「拡張ストリーミング履歴」のzipファイルを読み込むと、期間を指定してアーティスト・曲ごとの再生回数と再生時間のランキングが見られます。アーティストで絞ればそのアーティストの曲だけのランキングも見られます。新しいzipを入手したら、そのつど読み込み直してください。</p>
+      <p class="lede">Spotifyからダウンロードした「拡張ストリーミング履歴」のzipファイルを読み込むと、期間を指定してアーティスト・曲ごとの再生回数と再生時間のランキングが見られます。アーティストで絞れば、そのアーティスト専用のハイライト・月ごと・時間帯ごとの統計も見られます。各セクションは見出し右のボタンで折りたためます。新しいzipを入手したら、そのつど読み込み直してください。</p>
 
       <!-- ===== upload ===== -->
       <section id="uploadSection">
@@ -314,7 +353,18 @@
 
         <div class="stats" id="stats"></div>
 
-        <div class="panel">
+        <div class="fold-bar">
+          <span>セクションの表示</span>
+          <button type="button" id="expandAllBtn">すべて開く</button>
+          <button type="button" id="collapseAllBtn">すべて閉じる</button>
+        </div>
+
+        <div class="panel collapsible" id="rankingPanel">
+          <div class="panel-head">
+            <h2>ランキング</h2>
+            <button class="collapse-btn" type="button" data-collapse-toggle aria-expanded="true" aria-label="ランキングを折りたたむ／開く"><span class="chev" aria-hidden="true">▾</span>開閉</button>
+          </div>
+          <div class="panel-body">
           <div class="segrow">
             <div class="seg" id="segTarget" role="tablist" aria-label="ランキング対象">
               <button type="button" data-target="artist" class="active">アーティスト</button>
@@ -334,6 +384,7 @@
           <div class="more-row">
             <button class="btn btn-ghost" id="moreBtn" type="button" hidden>もっと見る</button>
           </div>
+          </div>
         </div>
 
         <div class="panel" id="artistPanel" hidden>
@@ -352,21 +403,66 @@
           <div class="more-row">
             <button class="btn btn-ghost" id="artistMoreBtn" type="button" hidden>もっと見る</button>
           </div>
+
+          <div class="artist-section collapsible-sub" id="artistInsightsSection">
+            <div class="artist-section-head">
+              <h3 id="artistInsightsTitle">このアーティストのハイライト</h3>
+              <button class="collapse-btn" type="button" data-collapse-toggle aria-expanded="true" aria-label="アーティストのハイライトを折りたたむ／開く"><span class="chev" aria-hidden="true">▾</span>開閉</button>
+            </div>
+            <div class="artist-section-body">
+              <div class="insight-grid" id="artistInsights"></div>
+            </div>
+          </div>
+
+          <div class="artist-section collapsible-sub collapsed" id="artistMonthSection">
+            <div class="artist-section-head">
+              <h3 id="artistMonthTitle">月ごとの再生時間</h3>
+              <button class="collapse-btn" type="button" data-collapse-toggle aria-expanded="false" aria-label="アーティストの月ごとの再生時間を折りたたむ／開く"><span class="chev" aria-hidden="true">▾</span>開閉</button>
+            </div>
+            <div class="artist-section-body">
+              <div class="chart-wrap" id="artistChartWrap"></div>
+            </div>
+          </div>
+
+          <div class="artist-section collapsible-sub collapsed" id="artistHourSection">
+            <div class="artist-section-head">
+              <h3 id="artistHourTitle">時間帯ごとの再生回数</h3>
+              <button class="collapse-btn" type="button" data-collapse-toggle aria-expanded="false" aria-label="アーティストの時間帯ごとの再生回数を折りたたむ／開く"><span class="chev" aria-hidden="true">▾</span>開閉</button>
+            </div>
+            <div class="artist-section-body">
+              <div class="chart-wrap" id="artistHourChartWrap"></div>
+            </div>
+          </div>
         </div>
 
-        <div class="panel">
-          <h2>この期間のハイライト</h2>
-          <div class="insight-grid" id="insights"></div>
+        <div class="panel collapsible" id="insightsPanel">
+          <div class="panel-head">
+            <h2>この期間のハイライト</h2>
+            <button class="collapse-btn" type="button" data-collapse-toggle aria-expanded="true" aria-label="ハイライトを折りたたむ／開く"><span class="chev" aria-hidden="true">▾</span>開閉</button>
+          </div>
+          <div class="panel-body">
+            <div class="insight-grid" id="insights"></div>
+          </div>
         </div>
 
-        <div class="panel">
-          <h2>月ごとの再生時間</h2>
-          <div class="chart-wrap" id="chartWrap"></div>
+        <div class="panel collapsible collapsed" id="monthPanel">
+          <div class="panel-head">
+            <h2>月ごとの再生時間</h2>
+            <button class="collapse-btn" type="button" data-collapse-toggle aria-expanded="false" aria-label="月ごとの再生時間を折りたたむ／開く"><span class="chev" aria-hidden="true">▾</span>開閉</button>
+          </div>
+          <div class="panel-body">
+            <div class="chart-wrap" id="chartWrap"></div>
+          </div>
         </div>
 
-        <div class="panel">
-          <h2>時間帯ごとの再生回数</h2>
-          <div class="chart-wrap" id="hourChartWrap"></div>
+        <div class="panel collapsible collapsed" id="hourPanel">
+          <div class="panel-head">
+            <h2>時間帯ごとの再生回数</h2>
+            <button class="collapse-btn" type="button" data-collapse-toggle aria-expanded="false" aria-label="時間帯ごとの再生回数を折りたたむ／開く"><span class="chev" aria-hidden="true">▾</span>開閉</button>
+          </div>
+          <div class="panel-body">
+            <div class="chart-wrap" id="hourChartWrap"></div>
+          </div>
         </div>
       </section>
 
@@ -758,6 +854,79 @@
           var sub = r.album ? esc(r.album) : "";
           return rankRowHtml(r, i, maxVal, byTime, sub, false);
         }).join("");
+
+        // Per-artist highlights / monthly / hourly (same period & filters as above)
+        $("artistInsightsTitle").textContent = state.artist + " のハイライト";
+        $("artistMonthTitle").textContent = state.artist + " ・ 月ごとの再生時間";
+        $("artistHourTitle").textContent = state.artist + " ・ 時間帯ごとの再生回数";
+        renderArtistInsights(mine);
+        renderChart(mine, $("artistChartWrap"));
+        renderHourChart(mine, $("artistHourChartWrap"));
+      }
+
+      /* ---------- per-artist insights ---------- */
+      function renderArtistInsights(mine) {
+        var box = $("artistInsights");
+        if (!mine.length) {
+          box.innerHTML = '<p class="empty-note" style="grid-column:1/-1">この期間にこのアーティストの再生履歴がありません。</p>';
+          return;
+        }
+        var totalMs = 0;
+        var hourPlays = new Array(24).fill(0);
+        var wdMs = [0, 0, 0, 0, 0, 0, 0];
+        var dayMs = {}, dayPlays = {}, daySet = {}, trackAgg = {};
+        mine.forEach(function (e) {
+          totalMs += e.ms;
+          var d = new Date(e.t);
+          hourPlays[d.getHours()]++;
+          wdMs[d.getDay()] += e.ms;
+          var dk = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+          dayMs[dk] = (dayMs[dk] || 0) + e.ms;
+          dayPlays[dk] = (dayPlays[dk] || 0) + 1;
+          daySet[dk] = true;
+          var tr = trackAgg[e.key] || (trackAgg[e.key] = { name: e.track, plays: 0, ms: 0 });
+          tr.plays++; tr.ms += e.ms;
+        });
+        var bestDayKey = null, bestDayMs = -1;
+        Object.keys(dayMs).forEach(function (k) { if (dayMs[k] > bestDayMs) { bestDayMs = dayMs[k]; bestDayKey = k; } });
+        var bd = new Date(Math.floor(bestDayKey / 10000), Math.floor(bestDayKey / 100) % 100 - 1, bestDayKey % 100);
+        var peakHour = 0;
+        for (var h = 1; h < 24; h++) if (hourPlays[h] > hourPlays[peakHour]) peakHour = h;
+        var topWd = 0;
+        for (var w = 1; w < 7; w++) if (wdMs[w] > wdMs[topWd]) topWd = w;
+        var wdShare = totalMs > 0 ? Math.round(wdMs[topWd] / totalMs * 100) : 0;
+        var dayNums = Object.keys(daySet).map(function (k) {
+          k = +k;
+          return Math.round(Date.UTC(Math.floor(k / 10000), Math.floor(k / 100) % 100 - 1, k % 100) / 86400000);
+        }).sort(function (a, b) { return a - b; });
+        var streak = 0, runLen = 0, prev = null;
+        dayNums.forEach(function (n) {
+          runLen = (prev !== null && n === prev + 1) ? runLen + 1 : 1;
+          if (runLen > streak) streak = runLen;
+          prev = n;
+        });
+        var topTrack = null;
+        Object.keys(trackAgg).forEach(function (k) {
+          if (!topTrack || trackAgg[k].plays > topTrack.plays) topTrack = trackAgg[k];
+        });
+        // first-ever play of this artist in the whole loaded file
+        var firstEverT = null;
+        entries.forEach(function (e) {
+          if (e.artist === state.artist && (firstEverT === null || e.t < firstEverT)) firstEverT = e.t;
+        });
+        var uniqTracks = Object.keys(trackAgg).length;
+        var repeatRate = mine.length ? Math.round((mine.length - uniqTracks) / mine.length * 100) : 0;
+        box.innerHTML =
+          aInsight("いちばん聴いた日", fmtDate(bd), fmtDur(bestDayMs) + " ／ " + fmtNum(dayPlays[bestDayKey] || 0) + "回聴きました") +
+          aInsight("よく聴く時間帯", peakHour + "時台", "この期間に " + fmtNum(hourPlays[peakHour]) + " 回再生") +
+          aInsight("いちばん聴く曜日", WD[topWd] + "曜日", "このアーティストの再生時間の " + wdShare + "%") +
+          aInsight("最も聴いた曲", esc(topTrack ? topTrack.name : "—"), topTrack ? fmtNum(topTrack.plays) + "回 ／ " + fmtDur(topTrack.ms) : "") +
+          aInsight("連続で聴いた最長記録", fmtNum(streak) + " <small>日連続</small>", "このアーティストを毎日聴いた期間（リピート率 " + repeatRate + "%）") +
+          aInsight("初めて聴いた日", firstEverT !== null ? fmtDate(new Date(firstEverT)) : "—", "全履歴での初再生／この期間の初回は " + fmtDate(new Date(mine[0].t)));
+        function aInsight(k, v, sub) {
+          return '<div class="insight"><div class="k">' + k + '</div><div class="v num">' + v +
+                 '</div><div class="sub">' + sub + "</div></div>";
+        }
       }
 
       /* ---------- insights ---------- */
@@ -839,9 +1008,8 @@
         }
       }
 
-      /* ---------- hour-of-day chart ---------- */
-      function renderHourChart(list) {
-        var wrap = $("hourChartWrap");
+      /* ---------- hour-of-day chart (list + target element) ---------- */
+      function renderHourChart(list, wrap) {
         var plays = new Array(24).fill(0);
         list.forEach(function (e) { plays[new Date(e.t).getHours()]++; });
         var max = Math.max.apply(null, plays);
@@ -867,7 +1035,7 @@
         wrap.innerHTML = svg;
       }
 
-      function renderChart(list) {
+      function renderChart(list, wrap) {
         var byMonth = {};
         list.forEach(function (e) {
           var d = new Date(e.t);
@@ -875,7 +1043,6 @@
           byMonth[k] = (byMonth[k] || 0) + e.ms;
         });
         var keys = Object.keys(byMonth).sort();
-        var wrap = $("chartWrap");
         if (!keys.length) { wrap.innerHTML = '<p class="empty-note">データがありません。</p>'; return; }
         var max = Math.max.apply(null, keys.map(function (k) { return byMonth[k]; }));
         var W = 840, H = 190, base = 158, topPad = 26;
@@ -913,9 +1080,31 @@
         renderRanking(agg);
         renderArtistDetail(list, totalMs);
         renderInsights(list);
-        renderChart(list);
-        renderHourChart(list);
+        renderChart(list, $("chartWrap"));
+        renderHourChart(list, $("hourChartWrap"));
       }
+
+      /* ================= collapsible sections ================= */
+      function setPanelCollapsed(panel, collapsed) {
+        panel.classList.toggle("collapsed", collapsed);
+        var btn = panel.querySelector("[data-collapse-toggle]");
+        if (btn) btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      }
+      document.addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-collapse-toggle]");
+        if (!btn) return;
+        var panel = btn.closest(".collapsible, .collapsible-sub");
+        if (!panel) return;
+        setPanelCollapsed(panel, !panel.classList.contains("collapsed"));
+      });
+      $("expandAllBtn").addEventListener("click", function () {
+        document.querySelectorAll("#resultSection .collapsible, #resultSection .collapsible-sub")
+          .forEach(function (p) { setPanelCollapsed(p, false); });
+      });
+      $("collapseAllBtn").addEventListener("click", function () {
+        document.querySelectorAll("#resultSection .collapsible, #resultSection .collapsible-sub")
+          .forEach(function (p) { setPanelCollapsed(p, true); });
+      });
 
       /* ================= controls ================= */
       $("segTarget").addEventListener("click", function (e) {
