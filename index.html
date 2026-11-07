@@ -202,11 +202,45 @@
       .chart-wrap text { fill: var(--muted); font-size: 10px; font-family: inherit; }
       .chart-wrap .val { fill: var(--ink-2); font-weight: 700; }
 
+      .artist-pick { margin-top: 14px; }
+      .artist-pick label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; font-weight: 700; color: var(--muted); max-width: 420px; }
+      .artist-pick select {
+        font: inherit; font-size: 14px; font-weight: 400; color: var(--ink);
+        background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; width: 100%;
+      }
+
+      /* ---------- artist drill-down ---------- */
+      .rank-name.artist-link { cursor: pointer; }
+      .rank-name.artist-link:hover { color: var(--accent-strong); text-decoration: underline; text-underline-offset: 3px; }
+      .filter-note { font-size: 12px; color: var(--muted); margin: 0 0 8px; }
+      .artist-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; margin-bottom: 4px; }
+      .artist-head h2 { margin: 0; }
+      .artist-head .spacer { flex: 1; }
+      .mini-stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+      .mini-stat {
+        background: var(--surface-2); border-radius: 10px; padding: 8px 12px; min-width: 104px;
+      }
+      .mini-stat .k { font-size: 11px; color: var(--muted); font-weight: 700; }
+      .mini-stat .v { font-size: 17px; font-weight: 900; line-height: 1.3; }
+      .mini-stat .v small { font-size: 12px; font-weight: 700; color: var(--ink-2); }
+
+      /* ---------- insights ---------- */
+      .insight-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .insight {
+        background: var(--surface-2); border-radius: 10px; padding: 12px 14px;
+      }
+      .insight .k { font-size: 12px; color: var(--muted); font-weight: 700; margin-bottom: 2px; }
+      .insight .v { font-size: 18px; font-weight: 900; line-height: 1.35; }
+      .insight .v small { font-size: 12px; font-weight: 700; color: var(--ink-2); }
+      .insight .sub { font-size: 12px; color: var(--ink-2); }
+      .insight .sub:empty { display: none; }
+
       footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 8px; }
 
       @media (max-width: 640px) {
         .stats { grid-template-columns: repeat(2, 1fr); }
         .stat .v { font-size: 19px; }
+        .insight-grid { grid-template-columns: repeat(2, 1fr); }
         .rank-item { grid-template-columns: 26px 1fr auto; }
         h1 { font-size: 20px; }
       }
@@ -215,7 +249,7 @@
   <body>
     <div class="wrap">
       <h1>Spotify再生履歴ランキング</h1>
-      <p class="lede">Spotifyからダウンロードした「拡張ストリーミング履歴」のzipファイルを読み込むと、期間を指定してアーティスト・曲ごとの再生回数と再生時間のランキングが見られます。新しいzipを入手したら、そのつど読み込み直してください。</p>
+      <p class="lede">Spotifyからダウンロードした「拡張ストリーミング履歴」のzipファイルを読み込むと、期間を指定してアーティスト・曲ごとの再生回数と再生時間のランキングが見られます。アーティストで絞ればそのアーティストの曲だけのランキングも見られます。新しいzipを入手したら、そのつど読み込み直してください。</p>
 
       <!-- ===== upload ===== -->
       <section id="uploadSection">
@@ -269,6 +303,13 @@
             <label class="opt"><input type="checkbox" id="optMinPlay" /> 30秒未満の再生を数えない</label>
             <label class="opt"><input type="checkbox" id="optPodcast" /> ポッドキャストも含める</label>
           </div>
+          <div class="artist-pick">
+            <label>アーティストで絞る
+              <select id="artistSelect">
+                <option value="">すべてのアーティスト</option>
+              </select>
+            </label>
+          </div>
         </div>
 
         <div class="stats" id="stats"></div>
@@ -287,6 +328,7 @@
               <input type="search" id="searchInput" placeholder="名前で絞り込む…" aria-label="名前で絞り込む" />
             </div>
           </div>
+          <p class="filter-note" id="artistHint" hidden>アーティスト名をタップすると、そのアーティストの曲だけのランキングが見られます。</p>
           <ol class="rank-list" id="rankList"></ol>
           <p class="empty-note" id="rankEmpty" hidden>この期間・条件に一致する再生履歴がありません。</p>
           <div class="more-row">
@@ -294,9 +336,37 @@
           </div>
         </div>
 
+        <div class="panel" id="artistPanel" hidden>
+          <div class="artist-head">
+            <h2 id="artistTitle"></h2>
+            <span class="spacer"></span>
+            <div class="seg" id="segArtistMetric" role="tablist" aria-label="アーティスト内ランキングの並び替え">
+              <button type="button" data-ametric="plays" class="active">再生回数順</button>
+              <button type="button" data-ametric="time">再生時間順</button>
+            </div>
+            <button class="linkbtn" id="artistClearBtn" type="button">絞り込みを解除</button>
+          </div>
+          <div class="mini-stats" id="artistStats"></div>
+          <ol class="rank-list" id="artistRankList"></ol>
+          <p class="empty-note" id="artistEmpty" hidden>この期間にこのアーティストの再生履歴がありません。</p>
+          <div class="more-row">
+            <button class="btn btn-ghost" id="artistMoreBtn" type="button" hidden>もっと見る</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>この期間のハイライト</h2>
+          <div class="insight-grid" id="insights"></div>
+        </div>
+
         <div class="panel">
           <h2>月ごとの再生時間</h2>
           <div class="chart-wrap" id="chartWrap"></div>
+        </div>
+
+        <div class="panel">
+          <h2>時間帯ごとの再生回数</h2>
+          <div class="chart-wrap" id="hourChartWrap"></div>
         </div>
       </section>
 
@@ -309,7 +379,8 @@
       /* ================= state ================= */
       var entries = [];        // {t: epoch ms, ms: number, track, artist, album, key, ep: bool}
       var dataMin = null, dataMax = null;
-      var state = { target: "artist", metric: "plays", query: "", shown: 50 };
+      var state = { target: "artist", metric: "plays", query: "", shown: 50,
+                    artist: "", artistMetric: "plays", artistShown: 50 };
 
       var $ = function (id) { return document.getElementById(id); };
       var dropZone = $("dropZone"), fileInput = $("fileInput"), pickBtn = $("pickBtn");
@@ -473,6 +544,9 @@
           $("fileName").textContent = files.length === 1 ? files[0].name : files.length + "個のファイル";
           $("fileMeta").textContent = "全 " + fmtNum(entries.length) + " 件 ／ " + fmtDate(dataMin) + " ～ " + fmtDate(dataMax);
           buildYearChips();
+          buildArtistOptions();
+          state.artist = ""; state.artistShown = 50;
+          $("artistSelect").value = "";
           setPreset("all");
           $("uploadSection").hidden = true;
           $("resultSection").hidden = false;
@@ -493,6 +567,19 @@
           html += '<button class="chip" type="button" data-preset="year:' + yr + '">' + yr + "年</button>";
         });
         $("yearChips").innerHTML = html;
+      }
+
+      function buildArtistOptions() {
+        var counts = {};
+        entries.forEach(function (e) { counts[e.artist] = (counts[e.artist] || 0) + 1; });
+        var names = Object.keys(counts).sort(function (a, b) {
+          return counts[b] - counts[a] || (a < b ? -1 : a > b ? 1 : 0);
+        });
+        var html = '<option value="">すべてのアーティスト</option>';
+        names.forEach(function (n) {
+          html += '<option value="' + esc(n) + '">' + esc(n) + "（" + fmtNum(counts[n]) + "回）</option>";
+        });
+        $("artistSelect").innerHTML = html;
       }
 
       function setActiveChip(preset) {
@@ -532,6 +619,12 @@
       });
       $("optMinPlay").addEventListener("change", function () { state.shown = 50; render(); });
       $("optPodcast").addEventListener("change", function () { state.shown = 50; render(); });
+      $("artistSelect").addEventListener("change", function () {
+        state.artist = this.value;
+        state.artistShown = 50;
+        render();
+        if (state.artist) $("artistPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
 
       function currentFilter() {
         var fromVal = $("dateFrom").value, toVal = $("dateTo").value;
@@ -575,6 +668,31 @@
         }
       }
 
+      function sortRows(rows, byTime) {
+        rows.sort(function (a, b) {
+          var d = byTime ? b.ms - a.ms : b.plays - a.plays;
+          if (d) return d;
+          return byTime ? b.plays - a.plays : b.ms - a.ms;
+        });
+        return rows;
+      }
+
+      function rankRowHtml(r, i, maxVal, byTime, sub, linkArtist) {
+        var val = byTime ? r.ms : r.plays;
+        var pct = maxVal > 0 ? Math.max(1.5, (val / maxVal) * 100) : 0;
+        var big = byTime ? fmtDur(r.ms) : fmtNum(r.plays) + " 回";
+        var small = byTime ? fmtNum(r.plays) + " 回" : fmtDur(r.ms);
+        var nameAttr = linkArtist ? ' class="rank-name artist-link" data-artist="' + esc(r.name) + '" role="button" tabindex="0" title="このアーティストの曲を見る"' : ' class="rank-name"';
+        return '<li class="rank-item">' +
+          '<span class="rk num' + (i < 3 ? " r" + (i + 1) : "") + '">' + (i + 1) + "</span>" +
+          '<div class="rank-main"><div' + nameAttr + ">" + esc(r.name) + "</div>" +
+          '<div class="rank-sub">' + sub + "</div></div>" +
+          '<div class="rank-val"><span class="big num">' + big + '</span>' +
+          '<span class="small num">' + small + "</span></div>" +
+          '<div class="bar"><div style="width:' + pct.toFixed(1) + '%"></div></div>' +
+          "</li>";
+      }
+
       function renderRanking(agg) {
         var isArtist = state.target === "artist";
         var byTime = state.metric === "time";
@@ -587,33 +705,166 @@
                    (r.album && r.album.toLowerCase().indexOf(q) >= 0);
           });
         }
-        rows.sort(function (a, b) {
-          var d = byTime ? b.ms - a.ms : b.plays - a.plays;
-          if (d) return d;
-          return byTime ? b.plays - a.plays : b.ms - a.ms;
-        });
+        sortRows(rows, byTime);
         var maxVal = rows.length ? (byTime ? rows[0].ms : rows[0].plays) : 0;
         var show = rows.slice(0, state.shown);
         $("rankEmpty").hidden = rows.length > 0;
+        $("artistHint").hidden = !isArtist || rows.length === 0;
         $("moreBtn").hidden = rows.length <= state.shown;
         $("moreBtn").textContent = "もっと見る（残り " + fmtNum(rows.length - state.shown) + " 件）";
         $("rankList").innerHTML = show.map(function (r, i) {
-          var val = byTime ? r.ms : r.plays;
-          var pct = maxVal > 0 ? Math.max(1.5, (val / maxVal) * 100) : 0;
-          var big = byTime ? fmtDur(r.ms) : fmtNum(r.plays) + " 回";
-          var small = byTime ? fmtNum(r.plays) + " 回" : fmtDur(r.ms);
           var sub = isArtist
             ? fmtNum(Object.keys(r.trackCount).length) + " 曲"
             : esc(r.artist) + (r.album ? " ・ " + esc(r.album) : "");
-          return '<li class="rank-item">' +
-            '<span class="rk num' + (i < 3 ? " r" + (i + 1) : "") + '">' + (i + 1) + "</span>" +
-            '<div class="rank-main"><div class="rank-name">' + esc(r.name) + '</div>' +
-            '<div class="rank-sub">' + sub + "</div></div>" +
-            '<div class="rank-val"><span class="big num">' + big + '</span>' +
-            '<span class="small num">' + small + "</span></div>" +
-            '<div class="bar"><div style="width:' + pct.toFixed(1) + '%"></div></div>' +
-            "</li>";
+          return rankRowHtml(r, i, maxVal, byTime, sub, isArtist);
         }).join("");
+      }
+
+      /* ---------- artist drill-down ---------- */
+      function renderArtistDetail(list, totalMs) {
+        var panel = $("artistPanel");
+        if (!state.artist) { panel.hidden = true; return; }
+        panel.hidden = false;
+        $("artistTitle").textContent = state.artist;
+        var mine = list.filter(function (e) { return e.artist === state.artist; });
+        $("artistEmpty").hidden = mine.length > 0;
+
+        var ms = 0, tracks = {}, albums = {};
+        mine.forEach(function (e) {
+          ms += e.ms;
+          var tr = tracks[e.key] || (tracks[e.key] = { name: e.track, artist: e.artist, album: e.album, plays: 0, ms: 0 });
+          tr.plays++; tr.ms += e.ms;
+          if (e.album) albums[e.album] = true;
+        });
+        var share = totalMs > 0 ? (ms / totalMs * 100) : 0;
+        $("artistStats").innerHTML =
+          miniStat("再生回数", fmtNum(mine.length) + " <small>回</small>") +
+          miniStat("再生時間", fmtDur(ms)) +
+          miniStat("期間全体に占める割合", share.toFixed(1) + " <small>%</small>") +
+          miniStat("曲数", fmtNum(Object.keys(tracks).length) + " <small>曲</small>") +
+          miniStat("アルバム数", fmtNum(Object.keys(albums).length) + " <small>枚</small>") +
+          (mine.length ? miniStat("この期間の初回再生", fmtDate(new Date(mine[0].t))) : "");
+        function miniStat(k, v) {
+          return '<div class="mini-stat"><div class="k">' + k + '</div><div class="v num">' + v + "</div></div>";
+        }
+
+        var byTime = state.artistMetric === "time";
+        var rows = sortRows(Object.values(tracks), byTime);
+        var maxVal = rows.length ? (byTime ? rows[0].ms : rows[0].plays) : 0;
+        var show = rows.slice(0, state.artistShown);
+        $("artistMoreBtn").hidden = rows.length <= state.artistShown;
+        $("artistMoreBtn").textContent = "もっと見る（残り " + fmtNum(rows.length - state.artistShown) + " 件）";
+        $("artistRankList").innerHTML = show.map(function (r, i) {
+          var sub = r.album ? esc(r.album) : "";
+          return rankRowHtml(r, i, maxVal, byTime, sub, false);
+        }).join("");
+      }
+
+      /* ---------- insights ---------- */
+      var WD = ["日", "月", "火", "水", "木", "金", "土"];
+
+      function renderInsights(list) {
+        var box = $("insights");
+        if (!list.length) {
+          box.innerHTML = '<p class="empty-note" style="grid-column:1/-1">この期間・条件に一致する再生履歴がありません。</p>';
+          return;
+        }
+        var totalMs = 0;
+        var hourPlays = new Array(24).fill(0);
+        var wdMs = [0, 0, 0, 0, 0, 0, 0];
+        var dayMs = {}, daySet = {}, trackPlays = {}, firstPlay = {};
+        list.forEach(function (e) {
+          totalMs += e.ms;
+          var d = new Date(e.t);
+          hourPlays[d.getHours()]++;
+          wdMs[d.getDay()] += e.ms;
+          var dk = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+          dayMs[dk] = (dayMs[dk] || 0) + e.ms;
+          daySet[dk] = true;
+          trackPlays[e.key] = (trackPlays[e.key] || 0) + 1;
+          if (firstPlay[e.key] === undefined || e.t < firstPlay[e.key]) firstPlay[e.key] = e.t;
+        });
+
+        // most-listened day
+        var bestDayKey = null, bestDayMs = -1;
+        Object.keys(dayMs).forEach(function (k) { if (dayMs[k] > bestDayMs) { bestDayMs = dayMs[k]; bestDayKey = k; } });
+        var bd = new Date(Math.floor(bestDayKey / 10000), Math.floor(bestDayKey / 100) % 100 - 1, bestDayKey % 100);
+
+        // peak hour (3-hour blocks merged for readability of the headline number)
+        var peakHour = 0;
+        for (var h = 1; h < 24; h++) if (hourPlays[h] > hourPlays[peakHour]) peakHour = h;
+
+        // top weekday
+        var topWd = 0;
+        for (var w = 1; w < 7; w++) if (wdMs[w] > wdMs[topWd]) topWd = w;
+        var wdShare = totalMs > 0 ? Math.round(wdMs[topWd] / totalMs * 100) : 0;
+
+        // longest daily streak within the filtered period
+        var dayNums = Object.keys(daySet).map(function (k) {
+          k = +k;
+          return Math.round(Date.UTC(Math.floor(k / 10000), Math.floor(k / 100) % 100 - 1, k % 100) / 86400000);
+        }).sort(function (a, b) { return a - b; });
+        var streak = 0, runLen = 0, prev = null;
+        dayNums.forEach(function (n) {
+          runLen = (prev !== null && n === prev + 1) ? runLen + 1 : 1;
+          if (runLen > streak) streak = runLen;
+          prev = n;
+        });
+
+        // discoveries: tracks whose first-ever play (in the whole file) falls in this period
+        var firstEver = {};
+        entries.forEach(function (e) { if (firstEver[e.key] === undefined) firstEver[e.key] = e.t; });
+        var discoveries = 0;
+        Object.keys(firstPlay).forEach(function (k) { if (firstEver[k] === firstPlay[k]) discoveries++; });
+
+        // repeat rate: share of plays that are a track's 2nd-or-later play
+        var uniqPlays = Object.keys(trackPlays).length;
+        var repeatPlays = list.length - uniqPlays;
+        var repeatRate = list.length ? Math.round(repeatPlays / list.length * 100) : 0;
+
+        // average session-ish: plays per active day
+        var activeDays = dayNums.length;
+        var perDayPlays = activeDays ? (list.length / activeDays) : 0;
+
+        box.innerHTML =
+          insight("いちばん聴いた日", fmtDate(bd), fmtDur(bestDayMs) + " 聴きました") +
+          insight("よく聴く時間帯", peakHour + "時台", "この期間に " + fmtNum(hourPlays[peakHour]) + " 回再生") +
+          insight("いちばん聴く曜日", WD[topWd] + "曜日", "全再生時間の " + wdShare + "%") +
+          insight("連続で聴いた最長記録", fmtNum(streak) + " <small>日連続</small>", "毎日欠かさず聴いた期間") +
+          insight("この期間に初めて聴いた曲", fmtNum(discoveries) + " <small>曲</small>", "全履歴の中で初再生だった曲") +
+          insight("リピート率", repeatRate + " <small>%</small>", "同じ曲の2回目以降の再生が占める割合（1日平均 " + perDayPlays.toFixed(1) + " 回再生）");
+        function insight(k, v, sub) {
+          return '<div class="insight"><div class="k">' + k + '</div><div class="v num">' + v +
+                 '</div><div class="sub">' + esc(sub) + "</div></div>";
+        }
+      }
+
+      /* ---------- hour-of-day chart ---------- */
+      function renderHourChart(list) {
+        var wrap = $("hourChartWrap");
+        var plays = new Array(24).fill(0);
+        list.forEach(function (e) { plays[new Date(e.t).getHours()]++; });
+        var max = Math.max.apply(null, plays);
+        if (!max) { wrap.innerHTML = '<p class="empty-note">データがありません。</p>'; return; }
+        var W = 840, H = 170, base = 138, topPad = 26;
+        var bw = W / 24;
+        var svg = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="時間帯ごとの再生回数グラフ">';
+        plays.forEach(function (v, h) {
+          var bh = Math.max(2, (v / max) * (base - topPad));
+          var x = h * bw + bw * 0.18, wdt = bw * 0.64;
+          svg += '<rect class="bar-rect" x="' + x.toFixed(1) + '" y="' + (base - bh).toFixed(1) +
+                 '" width="' + wdt.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="3"><title>' +
+                 h + "時台：" + fmtNum(v) + "回</title></rect>";
+          if (h % 3 === 0) {
+            svg += '<text x="' + (h * bw + bw / 2).toFixed(1) + '" y="' + (base + 16) + '" text-anchor="middle">' + h + "時</text>";
+          }
+        });
+        var peak = 0;
+        plays.forEach(function (v, h) { if (v > plays[peak]) peak = h; });
+        svg += '<line x1="0" y1="' + base + '" x2="' + W + '" y2="' + base + '" stroke="var(--border)" stroke-width="1"/></svg>';
+        svg += '<p style="margin:8px 0 0;font-size:12px;color:var(--muted)">ピークは ' + peak + "時台（" +
+               esc(fmtNum(plays[peak])) + "回）／ バーにカーソルを合わせると各時間帯の回数が表示されます</p>";
+        wrap.innerHTML = svg;
       }
 
       function renderChart(list) {
@@ -656,9 +907,14 @@
       function render() {
         var list = currentFilter();
         var agg = aggregate(list);
+        var totalMs = 0;
+        list.forEach(function (e) { totalMs += e.ms; });
         renderStats(list, agg);
         renderRanking(agg);
+        renderArtistDetail(list, totalMs);
+        renderInsights(list);
         renderChart(list);
+        renderHourChart(list);
       }
 
       /* ================= controls ================= */
@@ -681,6 +937,38 @@
       });
       $("moreBtn").addEventListener("click", function () {
         state.shown += 100;
+        render();
+      });
+
+      function drillToArtist(name) {
+        state.artist = name;
+        state.artistShown = 50;
+        $("artistSelect").value = name;
+        render();
+        $("artistPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      $("rankList").addEventListener("click", function (e) {
+        var el = e.target.closest("[data-artist]");
+        if (el) drillToArtist(el.getAttribute("data-artist"));
+      });
+      $("rankList").addEventListener("keydown", function (e) {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        var el = e.target.closest("[data-artist]");
+        if (el) { e.preventDefault(); drillToArtist(el.getAttribute("data-artist")); }
+      });
+      $("artistClearBtn").addEventListener("click", function () {
+        state.artist = "";
+        $("artistSelect").value = "";
+        render();
+      });
+      $("segArtistMetric").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-ametric]"); if (!b) return;
+        state.artistMetric = b.getAttribute("data-ametric");
+        this.querySelectorAll("button").forEach(function (x) { x.classList.toggle("active", x === b); });
+        state.artistShown = 50; render();
+      });
+      $("artistMoreBtn").addEventListener("click", function () {
+        state.artistShown += 100;
         render();
       });
     </script>
