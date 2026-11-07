@@ -241,6 +241,22 @@
       .chart-wrap text { fill: var(--muted); font-size: 10px; font-family: inherit; }
       .chart-wrap .val { fill: var(--ink-2); font-weight: 700; }
 
+      /* ---------- daily list ---------- */
+      .panel.collapsed .artist-head { margin-bottom: 0; }
+      .day-list { list-style: none; margin: 10px 0 0; padding: 0; }
+      .day-item {
+        display: grid; grid-template-columns: 1fr auto; gap: 4px 12px;
+        padding: 9px 2px; border-bottom: 1px solid var(--border); align-items: baseline;
+      }
+      .day-item:last-child { border-bottom: 0; }
+      .day-date { font-weight: 700; font-size: 14px; min-width: 0; }
+      .day-date .wd { color: var(--muted); font-weight: 500; font-size: 12.5px; margin-left: 4px; }
+      .day-val { text-align: right; }
+      .day-val .big { font-size: 14px; font-weight: 900; }
+      .day-val .small { font-size: 12px; color: var(--muted); display: block; }
+      .day-item .bar { grid-column: 1 / 3; }
+      .day-note { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+
       .artist-pick { margin-top: 14px; }
       .artist-pick label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; font-weight: 700; color: var(--muted); max-width: 420px; }
       .artist-pick select {
@@ -288,7 +304,7 @@
   <body>
     <div class="wrap">
       <h1>Spotify再生履歴ランキング</h1>
-      <p class="lede">Spotifyからダウンロードした「拡張ストリーミング履歴」のzipファイルを読み込むと、期間を指定してアーティスト・曲ごとの再生回数と再生時間のランキングが見られます。アーティストで絞れば、そのアーティスト専用のハイライト・月ごと・時間帯ごとの統計も見られます。各セクションは見出し右のボタンで折りたためます。新しいzipを入手したら、そのつど読み込み直してください。</p>
+      <p class="lede">Spotifyからダウンロードした「拡張ストリーミング履歴」のzipファイルを読み込むと、期間を指定してアーティスト・曲ごとの再生回数と再生時間のランキングが見られます。月ごと・日ごと・時間帯ごとの統計も見られます。アーティストで絞れば、そのアーティスト専用のハイライト・月ごと・日ごと・時間帯ごとの統計も見られます。各セクション（アーティストのセクションも含む）は見出し右のボタンで折りたためます。新しいzipを入手したら、そのつど読み込み直してください。</p>
 
       <!-- ===== upload ===== -->
       <section id="uploadSection">
@@ -387,14 +403,19 @@
           </div>
         </div>
 
-        <div class="panel" id="artistPanel" hidden>
+        <div class="panel collapsible" id="artistPanel" hidden>
           <div class="artist-head">
             <h2 id="artistTitle"></h2>
             <span class="spacer"></span>
+            <button class="collapse-btn" type="button" data-collapse-toggle aria-expanded="true" aria-label="アーティストのセクションを折りたたむ／開く"><span class="chev" aria-hidden="true">▾</span>開閉</button>
+          </div>
+          <div class="panel-body">
+          <div class="segrow">
             <div class="seg" id="segArtistMetric" role="tablist" aria-label="アーティスト内ランキングの並び替え">
               <button type="button" data-ametric="plays" class="active">再生回数順</button>
               <button type="button" data-ametric="time">再生時間順</button>
             </div>
+            <span class="spacer" style="flex:1"></span>
             <button class="linkbtn" id="artistClearBtn" type="button">絞り込みを解除</button>
           </div>
           <div class="mini-stats" id="artistStats"></div>
@@ -424,6 +445,21 @@
             </div>
           </div>
 
+          <div class="artist-section collapsible-sub collapsed" id="artistDaySection">
+            <div class="artist-section-head">
+              <h3 id="artistDayTitle">日ごとの再生</h3>
+              <button class="collapse-btn" type="button" data-collapse-toggle aria-expanded="false" aria-label="アーティストの日ごとの再生を折りたたむ／開く"><span class="chev" aria-hidden="true">▾</span>開閉</button>
+            </div>
+            <div class="artist-section-body">
+              <div class="chart-wrap" id="artistDayChartWrap"></div>
+              <ol class="day-list" id="artistDayList"></ol>
+              <p class="empty-note" id="artistDayEmpty" hidden>この期間にこのアーティストの再生履歴がありません。</p>
+              <div class="more-row">
+                <button class="btn btn-ghost" id="artistDayMoreBtn" type="button" hidden>もっと見る</button>
+              </div>
+            </div>
+          </div>
+
           <div class="artist-section collapsible-sub collapsed" id="artistHourSection">
             <div class="artist-section-head">
               <h3 id="artistHourTitle">時間帯ごとの再生回数</h3>
@@ -432,6 +468,7 @@
             <div class="artist-section-body">
               <div class="chart-wrap" id="artistHourChartWrap"></div>
             </div>
+          </div>
           </div>
         </div>
 
@@ -452,6 +489,28 @@
           </div>
           <div class="panel-body">
             <div class="chart-wrap" id="chartWrap"></div>
+          </div>
+        </div>
+
+        <div class="panel collapsible collapsed" id="dayPanel">
+          <div class="panel-head">
+            <h2>日ごとの再生</h2>
+            <button class="collapse-btn" type="button" data-collapse-toggle aria-expanded="false" aria-label="日ごとの再生を折りたたむ／開く"><span class="chev" aria-hidden="true">▾</span>開閉</button>
+          </div>
+          <div class="panel-body">
+            <div class="segrow">
+              <div class="seg" id="segDaySort" role="tablist" aria-label="日ごとの並び替え">
+                <button type="button" data-daysort="date" class="active">日付が新しい順</button>
+                <button type="button" data-daysort="time">再生時間順</button>
+                <button type="button" data-daysort="plays">再生回数順</button>
+              </div>
+            </div>
+            <div class="chart-wrap" id="dayChartWrap"></div>
+            <ol class="day-list" id="dayList"></ol>
+            <p class="empty-note" id="dayEmpty" hidden>この期間・条件に一致する再生履歴がありません。</p>
+            <div class="more-row">
+              <button class="btn btn-ghost" id="dayMoreBtn" type="button" hidden>もっと見る</button>
+            </div>
           </div>
         </div>
 
@@ -476,7 +535,8 @@
       var entries = [];        // {t: epoch ms, ms: number, track, artist, album, key, ep: bool}
       var dataMin = null, dataMax = null;
       var state = { target: "artist", metric: "plays", query: "", shown: 50,
-                    artist: "", artistMetric: "plays", artistShown: 50 };
+                    artist: "", artistMetric: "plays", artistShown: 50,
+                    daySort: "date", dayShown: 31, artistDayShown: 31 };
 
       var $ = function (id) { return document.getElementById(id); };
       var dropZone = $("dropZone"), fileInput = $("fileInput"), pickBtn = $("pickBtn");
@@ -641,7 +701,7 @@
           $("fileMeta").textContent = "全 " + fmtNum(entries.length) + " 件 ／ " + fmtDate(dataMin) + " ～ " + fmtDate(dataMax);
           buildYearChips();
           buildArtistOptions();
-          state.artist = ""; state.artistShown = 50;
+          state.artist = ""; state.artistShown = 50; state.dayShown = 31; state.artistDayShown = 31; state.daySort = "date";
           $("artistSelect").value = "";
           setPreset("all");
           $("uploadSection").hidden = true;
@@ -707,17 +767,18 @@
         var btn = e.target.closest("[data-preset]");
         if (!btn) return;
         setPreset(btn.getAttribute("data-preset"));
-        state.shown = 50;
+        state.shown = 50; state.dayShown = 31; state.artistDayShown = 31;
         render();
       });
       ["dateFrom", "dateTo"].forEach(function (id) {
-        $(id).addEventListener("change", function () { setActiveChip("__custom__"); state.shown = 50; render(); });
+        $(id).addEventListener("change", function () { setActiveChip("__custom__"); state.shown = 50; state.dayShown = 31; state.artistDayShown = 31; render(); });
       });
-      $("optMinPlay").addEventListener("change", function () { state.shown = 50; render(); });
-      $("optPodcast").addEventListener("change", function () { state.shown = 50; render(); });
+      $("optMinPlay").addEventListener("change", function () { state.shown = 50; state.dayShown = 31; state.artistDayShown = 31; render(); });
+      $("optPodcast").addEventListener("change", function () { state.shown = 50; state.dayShown = 31; state.artistDayShown = 31; render(); });
       $("artistSelect").addEventListener("change", function () {
         state.artist = this.value;
-        state.artistShown = 50;
+        state.artistShown = 50; state.artistDayShown = 31;
+        if (state.artist) setPanelCollapsed($("artistPanel"), false);
         render();
         if (state.artist) $("artistPanel").scrollIntoView({ behavior: "smooth", block: "start" });
       });
@@ -858,9 +919,12 @@
         // Per-artist highlights / monthly / hourly (same period & filters as above)
         $("artistInsightsTitle").textContent = state.artist + " のハイライト";
         $("artistMonthTitle").textContent = state.artist + " ・ 月ごとの再生時間";
+        $("artistDayTitle").textContent = state.artist + " ・ 日ごとの再生";
         $("artistHourTitle").textContent = state.artist + " ・ 時間帯ごとの再生回数";
         renderArtistInsights(mine);
         renderChart(mine, $("artistChartWrap"));
+        renderDayChart(mine, $("artistDayChartWrap"));
+        renderDayList(mine, $("artistDayList"), $("artistDayEmpty"), $("artistDayMoreBtn"), state.artistDayShown, "date");
         renderHourChart(mine, $("artistHourChartWrap"));
       }
 
@@ -1035,6 +1099,109 @@
         wrap.innerHTML = svg;
       }
 
+      /* ---------- daily (per-day) chart + list ---------- */
+      function dayKeyOf(d) {
+        return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+      }
+      function dateFromDayKey(k) {
+        return new Date(Math.floor(k / 10000), Math.floor(k / 100) % 100 - 1, k % 100);
+      }
+      function aggregateDays(list) {
+        var map = {};
+        list.forEach(function (e) {
+          var k = dayKeyOf(new Date(e.t));
+          var r = map[k] || (map[k] = { key: k, date: dateFromDayKey(k), ms: 0, plays: 0 });
+          r.ms += e.ms; r.plays++;
+        });
+        return Object.keys(map).map(function (k) { return map[k]; })
+          .sort(function (a, b) { return a.key - b.key; });
+      }
+
+      function renderDayChart(list, wrap) {
+        if (!list.length) { wrap.innerHTML = '<p class="empty-note">データがありません。</p>'; return; }
+        var rows = aggregateDays(list);
+        var byKey = {};
+        rows.forEach(function (r) { byKey[r.key] = r; });
+        // Fill every calendar day from first to last so gaps (0 plays) are visible
+        var start = new Date(rows[0].date.getFullYear(), rows[0].date.getMonth(), rows[0].date.getDate());
+        var end = new Date(rows[rows.length - 1].date.getFullYear(), rows[rows.length - 1].date.getMonth(), rows[rows.length - 1].date.getDate());
+        var filled = [];
+        for (var cur = new Date(start); cur <= end; cur.setDate(cur.getDate() + 1)) {
+          var k = dayKeyOf(cur);
+          filled.push(byKey[k] || { key: k, date: new Date(cur), ms: 0, plays: 0 });
+        }
+        var max = 0;
+        filled.forEach(function (r) { if (r.ms > max) max = r.ms; });
+        if (!max) { wrap.innerHTML = '<p class="empty-note">データがありません。</p>'; return; }
+        var W = 840, H = 190, base = 158, topPad = 26;
+        var bw = W / filled.length;
+        var barW = Math.max(1, bw * (bw < 4 ? 0.9 : 0.64));
+        var inset = (bw - barW) / 2;
+        var svg = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="日ごとの再生時間グラフ">';
+        var labelStep = Math.max(1, Math.ceil(filled.length / 8));
+        filled.forEach(function (r, i) {
+          var h = r.ms > 0 ? Math.max(2, (r.ms / max) * (base - topPad)) : 0;
+          var x = i * bw + inset;
+          if (r.ms > 0) {
+            svg += '<rect class="bar-rect" x="' + x.toFixed(1) + '" y="' + (base - h).toFixed(1) +
+                   '" width="' + barW.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2"><title>' +
+                   esc(fmtDate(r.date)) + "：" + esc(fmtDur(r.ms)) + " ／ " + fmtNum(r.plays) + "回</title></rect>";
+          }
+          if (i % labelStep === 0 || i === filled.length - 1) {
+            svg += '<text x="' + (i * bw + bw / 2).toFixed(1) + '" y="' + (base + 16) + '" text-anchor="middle">' +
+                   (r.date.getMonth() + 1) + "/" + r.date.getDate() + "</text>";
+          }
+          if (filled.length <= 14 && r.ms > 0) {
+            svg += '<text class="val" x="' + (i * bw + bw / 2).toFixed(1) + '" y="' + (base - h - 6).toFixed(1) +
+                   '" text-anchor="middle">' + esc(fmtDur(r.ms)) + "</text>";
+          }
+        });
+        svg += '<line x1="0" y1="' + base + '" x2="' + W + '" y2="' + base + '" stroke="var(--border)" stroke-width="1"/></svg>';
+        var best = rows[0];
+        rows.forEach(function (r) { if (r.ms > best.ms) best = r; });
+        var totalMs = 0; rows.forEach(function (r) { totalMs += r.ms; });
+        var avg = filled.length ? totalMs / filled.length : 0;
+        svg += '<p class="day-note">最も多かった日：' + esc(fmtDate(best.date)) + "（" + esc(fmtDur(best.ms)) +
+               " ／ " + fmtNum(best.plays) + '回）／ 1日平均 ' + esc(fmtDur(avg)) +
+               " ／ 聴いた日 " + fmtNum(rows.length) + "日（期間 " + fmtNum(filled.length) + "日中）" +
+               (filled.length > 31 ? " ／ グラフは全日分を表示しています" : "") + "</p>";
+        wrap.innerHTML = svg;
+      }
+
+      function renderDayList(list, listEl, emptyEl, moreBtn, shown, sortMode) {
+        var rows = aggregateDays(list);
+        var sorted = rows.slice();
+        if (sortMode === "time") {
+          sorted.sort(function (a, b) { return b.ms - a.ms || b.plays - a.plays || b.key - a.key; });
+        } else if (sortMode === "plays") {
+          sorted.sort(function (a, b) { return b.plays - a.plays || b.ms - a.ms || b.key - a.key; });
+        } else {
+          sorted.sort(function (a, b) { return b.key - a.key; });
+        }
+        var maxMs = 0;
+        rows.forEach(function (r) { if (r.ms > maxMs) maxMs = r.ms; });
+        if (emptyEl) emptyEl.hidden = rows.length > 0;
+        if (moreBtn) {
+          moreBtn.hidden = rows.length <= shown;
+          moreBtn.textContent = "もっと見る（残り " + fmtNum(rows.length - shown) + " 日）";
+        }
+        var show = sorted.slice(0, shown);
+        listEl.innerHTML = show.map(function (r) {
+          var pct = maxMs > 0 ? Math.max(1.5, (r.ms / maxMs) * 100) : 0;
+          return '<li class="day-item">' +
+            '<div class="day-date">' + esc(fmtDate(r.date)) + '<span class="wd">（' + WD[r.date.getDay()] + "）</span></div>" +
+            '<div class="day-val"><span class="big num">' + esc(fmtDur(r.ms)) + '</span>' +
+            '<span class="small num">' + fmtNum(r.plays) + " 回</span></div>" +
+            '<div class="bar"><div style="width:' + pct.toFixed(1) + '%"></div></div>' +
+            "</li>";
+        }).join("");
+      }
+
+      function renderDaily(list) {
+        renderDayChart(list, $("dayChartWrap"));
+        renderDayList(list, $("dayList"), $("dayEmpty"), $("dayMoreBtn"), state.dayShown, state.daySort);
+      }
+
       function renderChart(list, wrap) {
         var byMonth = {};
         list.forEach(function (e) {
@@ -1081,6 +1248,7 @@
         renderArtistDetail(list, totalMs);
         renderInsights(list);
         renderChart(list, $("chartWrap"));
+        renderDaily(list);
         renderHourChart(list, $("hourChartWrap"));
       }
 
@@ -1131,8 +1299,9 @@
 
       function drillToArtist(name) {
         state.artist = name;
-        state.artistShown = 50;
+        state.artistShown = 50; state.artistDayShown = 31;
         $("artistSelect").value = name;
+        setPanelCollapsed($("artistPanel"), false);
         render();
         $("artistPanel").scrollIntoView({ behavior: "smooth", block: "start" });
       }
@@ -1158,6 +1327,20 @@
       });
       $("artistMoreBtn").addEventListener("click", function () {
         state.artistShown += 100;
+        render();
+      });
+      $("segDaySort").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-daysort]"); if (!b) return;
+        state.daySort = b.getAttribute("data-daysort");
+        this.querySelectorAll("button").forEach(function (x) { x.classList.toggle("active", x === b); });
+        state.dayShown = 31; render();
+      });
+      $("dayMoreBtn").addEventListener("click", function () {
+        state.dayShown += 62;
+        render();
+      });
+      $("artistDayMoreBtn").addEventListener("click", function () {
+        state.artistDayShown += 62;
         render();
       });
     </script>
